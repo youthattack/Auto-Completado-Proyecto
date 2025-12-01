@@ -22,6 +22,7 @@ bool yaExiste(char lista[][TAMTOKEN], int n, const char* pal)
     return false;
 }
 
+
 bool esLetraEsp(char c)
 {
 	return  (c >= 'a' && c <= 'z') ||
@@ -48,28 +49,28 @@ void limpiarPalabra(char* p)
         bool letra = esLetraEsp(c);
         bool dig = esDig(c);
 
-        // "/" allowed only in positions 0 and 1
+        // "/" posicion 1 y 0
         if (c == '/') {
             if (j < 2) p[j++] = c;
             continue;
         }
 
-        // $ + 1 digit
+        // $ digito
         if (j == 0 && c == '$') { p[j++] = c; continue; }
         if (j == 1 && p[0] == '$' && dig) { p[j++] = c; continue; }
         if (p[0] == '$') continue;
 
-        // # + digits
+        // # digitos
         if (j == 0 && c == '#') { p[j++] = c; continue; }
         if (j > 0 && p[0] == '#' && dig) { p[j++] = c; continue; }
         if (p[0] == '#') continue;
 
-        // & alone or with letters
+        // & solo
         if (j == 0 && c == '&') { p[j++] = c; continue; }
         if (j > 0 && p[0] == '&' && letra) { p[j++] = c; continue; }
         if (p[0] == '&') continue;
 
-        // allowed standalone symbols
+        // simbolos
         if (j == 0 && (c == '-' || c == '\'' || c == '"' || c == '!' || c == '+')) {
             p[j++] = c;
             continue;
@@ -84,7 +85,7 @@ void limpiarPalabra(char* p)
 
     p[j] = '\0';
 
-    // final rule for //xxxx
+    // final
     if (j >= 2 && p[0] == '/' && p[1] == '/')
     {
         int len = j - 2;
@@ -174,7 +175,7 @@ void ListaCandidatas(
                 nOut++;
             }
 
-    // sort by weight (bubble)
+    // Peso
     for (int i = 0; i < nOut - 1; i++)
         for (int j = 0; j < nOut - i - 1; j++)
             if (peso[j] < peso[j + 1])
@@ -192,27 +193,46 @@ void ListaCandidatas(
 void ClonaPalabras(char* s, char out[][TAMTOKEN], int& nOut)
 {
     int L = strlen(s);
-    const char alphabet[] = "abcdefghijklmn�opqrstuvwxyz�����";
+    const char alphabet[] = "abcdefghijklmn\xA4opqrstuvwxyz\xA0\x82\xA1\xA2\xA3";
+    // ? ANSI: � = 0xA4, ����� = A0 A2 A1 A3 82  depending on codepage
+
     int A = strlen(alphabet);
+    nOut = 0;
+	
+	strcpy(out[nOut++], s);
+    if (nOut >= NUMPALABRAS) return;
+	
+	    // REMOVALS
+    for (int pos = 0; pos < L; pos++)
+    {
+        char t[TAMTOKEN];
+        int k = 0;
 
-    // insertions
-    for (int a = 0; a < A; a++)
-        for (int pos = 0; pos <= L; pos++)
-        {
-            char t[TAMTOKEN];
-            strncpy(t, s, pos);
-            t[pos] = alphabet[a];
-            strcpy(t + pos + 1, s + pos);
+        for (int i = 0; i < L; i++)
+            if (i != pos)
+                t[k++] = s[i];
 
-            // ? NEW: only save if not duplicate
-            if (!yaExiste(out, nOut, t))
-            {
-                strcpy(out[nOut++], t);
-                if (nOut >= NUMPALABRAS) return;
-            }
-        }
+        t[k] = '\0';
 
-    // replacements
+        strcpy(out[nOut++], t);
+        if (nOut >= NUMPALABRAS) return;
+    }
+	
+    // SWAPS
+    for (int i = 0; i < L - 1; i++)
+    {
+        char t[TAMTOKEN];
+        strcpy(t, s);
+
+        char temp = t[i];
+        t[i] = t[i + 1];
+        t[i + 1] = temp;
+
+        strcpy(out[nOut++], t);
+        if (nOut >= NUMPALABRAS) return;
+    }
+
+    // REPLACEMENTS
     for (int pos = 0; pos < L; pos++)
         for (int a = 0; a < A; a++)
         {
@@ -220,41 +240,37 @@ void ClonaPalabras(char* s, char out[][TAMTOKEN], int& nOut)
             strcpy(t, s);
             t[pos] = alphabet[a];
 
-            if (!yaExiste(out, nOut, t))
-            {
-                strcpy(out[nOut++], t);
-                if (nOut >= NUMPALABRAS) return;
-            }
-        }
-
-    // swaps
-    for (int i = 0; i < L - 1; i++)
-    {
-        char t[TAMTOKEN];
-        strcpy(t, s);
-        char tmp = t[i]; t[i] = t[i + 1]; t[i + 1] = tmp;
-
-        if (!yaExiste(out, nOut, t))
-        {
             strcpy(out[nOut++], t);
             if (nOut >= NUMPALABRAS) return;
         }
-    }
-
-    // removals
-    for (int pos = 0; pos < L; pos++)
-    {
-        char t[TAMTOKEN];
-        strncpy(t, s, pos);
-        strcpy(t + pos, s + pos + 1);
-
-        if (!yaExiste(out, nOut, t))
+	
+	    // INSERTIONS
+    for (int a = 0; a < A; a++)
+        for (int pos = 0; pos <= L; pos++)
         {
+            char t[TAMTOKEN];
+            int k = 0;
+
+            // copy left part
+            for (int i = 0; i < pos; i++)
+                t[k++] = s[i];
+
+            // insert character
+            t[k++] = alphabet[a];
+
+            // copy right part
+            for (int i = pos; i < L; i++)
+                t[k++] = s[i];
+
+            t[k] = '\0';
+
             strcpy(out[nOut++], t);
             if (nOut >= NUMPALABRAS) return;
         }
-    }
+
+
 }
+
 
 
 
