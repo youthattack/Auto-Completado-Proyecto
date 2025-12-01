@@ -16,6 +16,40 @@
 
 #define countof(x) (sizeof(x) / sizeof((x)[0]))
 
+int alphaRank[256];
+
+void buildAlphabetRanking(const unsigned char* alphabet)
+{
+    // default: unknown chars go to end
+    for (int i = 0; i < 256; i++)
+        alphaRank[i] = 999;
+
+    // assign order
+    for (int i = 0; alphabet[i] != '\0'; i++)
+        alphaRank[ alphabet[i] ] = i;
+}
+
+int cmpstr_custom(const void* a, const void* b)
+{
+    const unsigned char* s1 = (const unsigned char*)a;
+    const unsigned char* s2 = (const unsigned char*)b;
+
+    while (*s1 && *s2)
+    {
+        int r1 = alphaRank[*s1];
+        int r2 = alphaRank[*s2];
+
+        if (r1 != r2)
+            return r1 - r2;
+
+        s1++;
+        s2++;
+    }
+
+    return (int)*s1 - (int)*s2;
+}
+
+
 bool yaExiste(char lista[][TAMTOKEN], int n, const char* pal)
 {
     for (int i = 0; i < n; i++)
@@ -126,10 +160,11 @@ void ordenarDiccionario(char dic[][TAMTOKEN], int est[], int n)
 
 int cmpstr(const void* a, const void* b)
 {
-    const char* sa = (const char*)a;
-    const char* sb = (const char*)b;
-    return strcmp(sa, sb);
+    const char (*pa)[TAMTOKEN] = (const char (*)[TAMTOKEN])a;
+    const char (*pb)[TAMTOKEN] = (const char (*)[TAMTOKEN])b;
+    return strcmp(*pa, *pb);
 }
+
 
 void Diccionario(char* szNombre, char dic[][TAMTOKEN],
     int est[], int& n)
@@ -203,17 +238,30 @@ void ListaCandidatas(
 void ClonaPalabras(char* s, char out[][TAMTOKEN], int& nOut)
 {
     int L = strlen(s);
-    const char alphabet[] = "abcdefghijklmn\xA4opqrstuvwxyz\xA0\x82\xA1\xA2\xA3";
-    // ? ANSI: � = 0xA4, ����� = A0 A2 A1 A3 82  depending on codepage
 
-    int A = strlen(alphabet);
+    const unsigned char alphabet[] =
+        "abcdefghijklmn"
+        "\xA4"            // �
+        "opqrstuvwxyz"
+        "\xA0"            // �
+        "\x82"            // �
+        "\xA1"            // �
+        "\xA2"            // �
+        "\xA3";           // �
+
+    int A = strlen((const char*)alphabet);
+
+    // Build ranking table ONCE per call
+    buildAlphabetRanking(alphabet);
+
+    memset(out, 0, NUMPALABRAS * TAMTOKEN);
     nOut = 0;
-	
-	memset(out[nOut], 0, TAMTOKEN);
-	strcpy(out[nOut++], s);
+
+    // Original word
+    strcpy(out[nOut++], s);
     if (nOut >= NUMPALABRAS) return;
-	
-	    // REMOVALS
+
+    // REMOVALS
     for (int pos = 0; pos < L; pos++)
     {
         char t[TAMTOKEN] = {0};
@@ -223,13 +271,10 @@ void ClonaPalabras(char* s, char out[][TAMTOKEN], int& nOut)
             if (i != pos)
                 t[k++] = s[i];
 
-        t[k] = '\0';
-		
-        memset(out[nOut], 0, TAMTOKEN);
         strcpy(out[nOut++], t);
         if (nOut >= NUMPALABRAS) return;
     }
-	
+
     // SWAPS
     for (int i = 0; i < L - 1; i++)
     {
@@ -240,7 +285,6 @@ void ClonaPalabras(char* s, char out[][TAMTOKEN], int& nOut)
         t[i] = t[i + 1];
         t[i + 1] = temp;
 
-        memset(out[nOut], 0, TAMTOKEN);
         strcpy(out[nOut++], t);
         if (nOut >= NUMPALABRAS) return;
     }
@@ -252,42 +296,37 @@ void ClonaPalabras(char* s, char out[][TAMTOKEN], int& nOut)
             char t[TAMTOKEN];
             strcpy(t, s);
             t[pos] = alphabet[a];
-			
-            memset(out[nOut], 0, TAMTOKEN);
+
             strcpy(out[nOut++], t);
             if (nOut >= NUMPALABRAS) return;
         }
-	
-	    // INSERTIONS
+
+    // INSERTIONS
     for (int a = 0; a < A; a++)
         for (int pos = 0; pos <= L; pos++)
         {
             char t[TAMTOKEN] = {0};
             int k = 0;
 
-            // copy left part
+            // left part
             for (int i = 0; i < pos; i++)
                 t[k++] = s[i];
 
-            // insert character
+            // insert
             t[k++] = alphabet[a];
 
-            // copy right part
+            // right part
             for (int i = pos; i < L; i++)
                 t[k++] = s[i];
 
-            t[k] = '\0';
-
-            memset(out[nOut], 0, TAMTOKEN);
             strcpy(out[nOut++], t);
             if (nOut >= NUMPALABRAS) return;
         }
-		
-    qsort(out, nOut, sizeof out[0], cmpstr);
 
-
-
+    // ONLY ONE SORT - custom
+    qsort(out, nOut, sizeof out[0], cmpstr_custom);
 }
+
 
 
 
