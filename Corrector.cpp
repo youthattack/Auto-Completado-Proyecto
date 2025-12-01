@@ -1,4 +1,4 @@
-/*****************************************************************************************************************
+*****************************************************************************************************************
 	UNIVERSIDAD NACIONAL AUTONOMA DE MEXICO
 	FACULTAD DE ESTUDIOS SUPERIORES -ARAGON-
 
@@ -31,7 +31,7 @@ void limpiarPalabra(char* p)
         bool esLetra =
             (c >= 'a' && c <= 'z') ||
             c == 0xF1 || // ñ
-            c == 0xE1 || c == 0xE9 || c == 0xED || c == 0xF3 || c == 0xFA; // áéíóú
+            c == 0xE1 || c == 0xE9 || c == 0xED || c == 0xF3 || c == 0xFA; // á é í ó ú
 
         bool esDigito = (c >= '0' && c <= '9');
 
@@ -109,37 +109,35 @@ void limpiarPalabra(char* p)
 
     p[j] = '\0';
 
-    //======================================================================
-    // FINAL URL RULE (REPLACES YOUR OLD BLOCK)
-    //
-    // ACCEPT ONLY EXACT tokens:
-    //   //www
-    //   //pglaf
-    //   //gutenberg
-    //   //gallica
-    //
-    // ANY OTHER TOKEN STARTING WITH "//" IS REJECTED.
-    //======================================================================
-    if (j >= 2 && p[0] == '/' && p[1] == '/')
-    {
-        const char* ok[] = {
-            "//www",
-            "//pglaf",
-            "//gutenberg",
-            "//gallica"
-        };
-        int allowed = 0;
+    //----------------------------------------------------------------------
+    // FINAL RULE:
+    // If the word starts with "//", accept ONLY if:
+    //   1) everything after is letters
+    //   2) length after "//" is between 1 and 10
+    //----------------------------------------------------------------------
+    if (j >= 2 && p[0] == '/' && p[1] == '/') {
 
-        for (int k = 0; k < 4; k++) {
-            if (strcmp(p, ok[k]) == 0) {
-                allowed = 1;
-                break;
-            }
-        }
+        int len = j - 2; // chars after //
 
-        if (!allowed) {
+        if (len == 0 || len > 10) {
             p[0] = '\0';
             return;
+        }
+
+        // all must be letters (with ñ/accents allowed)
+        for (int k = 2; k < j; k++) {
+            unsigned char x = (unsigned char)p[k];
+
+            bool esLetra2 =
+                (x >= 'a' && x <= 'z') ||
+                x == 0xF1 || // ñ
+                x == 0xE1 || x == 0xE9 || x == 0xED ||
+                x == 0xF3 || x == 0xFA; // áéíóú
+
+            if (!esLetra2) {
+                p[0] = '\0';
+                return;
+            }
         }
     }
 }
@@ -264,6 +262,93 @@ void	ClonaPalabras(
 	int &	iNumSugeridas)						//Numero de elementos en la lista
 {
 	//Sustituya estas lineas por su c�digo
-	strcpy_s(szPalabrasSugeridas[0], szPalabraLeida); //lo que sea que se capture, es sugerencia
-	iNumSugeridas = 1;							//Una sola palabra sugerida
+
+
+    // Añadir
+    int longitud = strlen(szPalabraLeida);
+
+    for (int i = 0; i < 26; i++) {           // i letra
+        for (int j = 0; j <= longitud; j++) { // j posicion
+
+            char nueva[TAMTOKEN];
+
+            //copiar
+            strncpy(nueva, szPalabraLeida, j);
+
+            //insertar letra
+            nueva[j] = 'a' + i;
+
+            //copiar
+            strcpy(nueva + j + 1, szPalabraLeida + j);
+
+            //guardar
+            strcpy(szPalabrasSugeridas[iNumSugeridas], nueva);
+            iNumSugeridas++;
+        }
+    }
+
+    // Reemplazo
+
+    const char alphabet[] = "abcdefghijklmnopqrstuvwxyz";
+
+    for (int pos = 0; pos < longitud; pos++) {      // posicion
+        for (int k = 0; k < 26; k++) {              // cambio letra
+
+            char nuevo2[TAMTOKEN];
+            strcpy(nuevo2, szPalabraLeida);         // copiaod
+
+            nuevo2[pos] = alphabet[k];              // reemplazo
+
+            strcpy(szPalabrasSugeridas[iNumSugeridas], nuevo2); // copiar a palabras finales
+            iNumSugeridas++;
+
+            if (iNumSugeridas >= NUMPALABRAS)       // seguridad
+                return;
+        }
+    }
+
+    // Swapeo
+
+    for (int i = 0; i < longitud - 1; i++) {
+
+        char nuevo3[TAMTOKEN];
+        strcpy(nuevo3, szPalabraLeida); // pasar palbara a variable de cambio
+
+        char temp = nuevo3[i]; // intercambio
+        nuevo3[i] = nuevo3[i + 1];
+        nuevo3[i + 1] = temp;
+
+        strcpy(szPalabrasSugeridas[iNumSugeridas], nuevo3); // copiar
+        iNumSugeridas++;
+
+
+    }
+
+
+    // remover
+
+    for (int j = 0; j < longitud; j++) {
+        char nueva[TAMTOKEN];
+
+        // copiado
+        if (j > 0)
+            strncpy(nueva, szPalabraLeida, j);
+        // añadir null
+        nueva[j] = '\0';
+
+        // copiar
+        strcpy(nueva + j, szPalabraLeida + j + 1);
+
+        // guardar
+        strcpy(szPalabrasSugeridas[iNumSugeridas], nueva);
+        iNumSugeridas++;
+    }
+
+
+
+
 }
+
+}
+
+
