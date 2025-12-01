@@ -11,6 +11,8 @@
 #include "stdafx.h"
 #include <string.h>
 #include "corrector.h"
+#include <stdlib.h>
+
 
 #define countof(x) (sizeof(x) / sizeof((x)[0]))
 
@@ -121,6 +123,14 @@ void ordenarDiccionario(char dic[][TAMTOKEN], int est[], int n)
                 est[j] = t;
             }
 }
+
+int cmpstr(const void* a, const void* b)
+{
+    const char* sa = (const char*)a;
+    const char* sb = (const char*)b;
+    return strcmp(sa, sb);
+}
+
 void Diccionario(char* szNombre, char dic[][TAMTOKEN],
     int est[], int& n)
 {
@@ -199,13 +209,14 @@ void ClonaPalabras(char* s, char out[][TAMTOKEN], int& nOut)
     int A = strlen(alphabet);
     nOut = 0;
 	
+	memset(out[nOut], 0, TAMTOKEN);
 	strcpy(out[nOut++], s);
     if (nOut >= NUMPALABRAS) return;
 	
 	    // REMOVALS
     for (int pos = 0; pos < L; pos++)
     {
-        char t[TAMTOKEN];
+        char t[TAMTOKEN] = {0};
         int k = 0;
 
         for (int i = 0; i < L; i++)
@@ -213,7 +224,8 @@ void ClonaPalabras(char* s, char out[][TAMTOKEN], int& nOut)
                 t[k++] = s[i];
 
         t[k] = '\0';
-
+		
+        memset(out[nOut], 0, TAMTOKEN);
         strcpy(out[nOut++], t);
         if (nOut >= NUMPALABRAS) return;
     }
@@ -221,13 +233,14 @@ void ClonaPalabras(char* s, char out[][TAMTOKEN], int& nOut)
     // SWAPS
     for (int i = 0; i < L - 1; i++)
     {
-        char t[TAMTOKEN];
+        char t[TAMTOKEN] = {0};
         strcpy(t, s);
 
         char temp = t[i];
         t[i] = t[i + 1];
         t[i + 1] = temp;
 
+        memset(out[nOut], 0, TAMTOKEN);
         strcpy(out[nOut++], t);
         if (nOut >= NUMPALABRAS) return;
     }
@@ -239,7 +252,8 @@ void ClonaPalabras(char* s, char out[][TAMTOKEN], int& nOut)
             char t[TAMTOKEN];
             strcpy(t, s);
             t[pos] = alphabet[a];
-
+			
+            memset(out[nOut], 0, TAMTOKEN);
             strcpy(out[nOut++], t);
             if (nOut >= NUMPALABRAS) return;
         }
@@ -248,7 +262,7 @@ void ClonaPalabras(char* s, char out[][TAMTOKEN], int& nOut)
     for (int a = 0; a < A; a++)
         for (int pos = 0; pos <= L; pos++)
         {
-            char t[TAMTOKEN];
+            char t[TAMTOKEN] = {0};
             int k = 0;
 
             // copy left part
@@ -264,9 +278,13 @@ void ClonaPalabras(char* s, char out[][TAMTOKEN], int& nOut)
 
             t[k] = '\0';
 
+            memset(out[nOut], 0, TAMTOKEN);
             strcpy(out[nOut++], t);
             if (nOut >= NUMPALABRAS) return;
         }
+		
+    qsort(out, nOut, sizeof out[0], cmpstr);
+
 
 
 }
