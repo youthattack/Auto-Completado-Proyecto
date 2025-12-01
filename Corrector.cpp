@@ -235,33 +235,94 @@ void ListaCandidatas(
                 strcpy(out[j + 1], tmp);
             }
 }
-void ClonaPalabras(char* s, char out[][TAMTOKEN], int& nOut)
-{
-    int L = strlen(s);
+// =======================================================
+//  ALPHABET RANKING TABLE (GLOBAL OR STATIC)
+// =======================================================
+static int alphaRank[256];
 
+static void buildAlphabetRanking(const unsigned char* alphabet)
+{
+    // initialize all bytes to large rank
+    for (int i = 0; i < 256; i++)
+        alphaRank[i] = 1000;
+
+    // assign rank by position in alphabet[]
+    for (int i = 0; alphabet[i] != '\0'; i++)
+        alphaRank[alphabet[i]] = i;
+}
+
+// =======================================================
+// CUSTOM STRING COMPARATOR
+// =======================================================
+static int cmpstr_custom(const void* pa, const void* pb)
+{
+    const unsigned char* s1 = (const unsigned char*)pa;
+    const unsigned char* s2 = (const unsigned char*)pb;
+
+    while (*s1 && *s2)
+    {
+        int r1 = alphaRank[*s1];
+        int r2 = alphaRank[*s2];
+
+        if (r1 != r2) return r1 - r2;
+
+        s1++, s2++;
+    }
+    // shorter string first
+    if (!*s1 && !*s2) return 0;
+    if (!*s1) return -1;
+    return 1;
+}
+
+// =======================================================
+// OPTIONAL DEBUG
+// =======================================================
+void debug_print_bytes(const unsigned char* s)
+{
+    printf("Bytes: ");
+    for (int i = 0; s[i] != '\0'; i++)
+        printf("%02X ", s[i]);
+    printf("\n");
+}
+
+// =======================================================
+//  FINAL PATCHED ClonaPalabras()
+// =======================================================
+void ClonaPalabras(
+    char* szPalabraLeida,
+    char szPalabrasSugeridas[][TAMTOKEN],
+    int& iNumSugeridas)
+{
     const unsigned char alphabet[] =
         "abcdefghijklmn"
-        "\xA4"            // �
+        "\xF1"            // � (ANSI/CP1252)
         "opqrstuvwxyz"
-        "\xA0"            // �
-        "\x82"            // �
-        "\xA1"            // �
-        "\xA2"            // �
-        "\xA3";           // �
+        "\xE1"            // �
+        "\xE9"            // �
+        "\xED"            // �
+        "\xF3"            // �
+        "\xFA";           // �
 
-    int A = strlen((const char*)alphabet);
+    const int A = strlen((const char*)alphabet);
+    const int L = strlen(szPalabraLeida);
 
-    // Build ranking table ONCE per call
+    // Build alphabet ranking
     buildAlphabetRanking(alphabet);
 
-    memset(out, 0, NUMPALABRAS * TAMTOKEN);
-    nOut = 0;
+    // OPTIONAL DEBUG
+    // printf("\nAlphabet literal check:\n");
+    // debug_print_bytes(alphabet);
 
-    // Original word
-    strcpy(out[nOut++], s);
-    if (nOut >= NUMPALABRAS) return;
+    iNumSugeridas = 0;
 
+    // ---------------------------------------
+    // ORIGINAL WORD
+    // ---------------------------------------
+    strcpy(szPalabrasSugeridas[iNumSugeridas++], szPalabraLeida);
+
+    // ---------------------------------------
     // REMOVALS
+    // ---------------------------------------
     for (int pos = 0; pos < L; pos++)
     {
         char t[TAMTOKEN] = {0};
@@ -269,63 +330,86 @@ void ClonaPalabras(char* s, char out[][TAMTOKEN], int& nOut)
 
         for (int i = 0; i < L; i++)
             if (i != pos)
-                t[k++] = s[i];
+                t[k++] = szPalabraLeida[i];
 
-        strcpy(out[nOut++], t);
-        if (nOut >= NUMPALABRAS) return;
+        strcpy(szPalabrasSugeridas[iNumSugeridas++], t);
     }
 
+    // ---------------------------------------
     // SWAPS
+    // ---------------------------------------
     for (int i = 0; i < L - 1; i++)
     {
-        char t[TAMTOKEN] = {0};
-        strcpy(t, s);
+        char t[TAMTOKEN];
+        strcpy(t, szPalabraLeida);
 
-        char temp = t[i];
+        char tmp = t[i];
         t[i] = t[i + 1];
-        t[i + 1] = temp;
+        t[i + 1] = tmp;
 
-        strcpy(out[nOut++], t);
-        if (nOut >= NUMPALABRAS) return;
+        strcpy(szPalabrasSugeridas[iNumSugeridas++], t);
     }
 
+    // ---------------------------------------
     // REPLACEMENTS
+    // ---------------------------------------
     for (int pos = 0; pos < L; pos++)
         for (int a = 0; a < A; a++)
         {
             char t[TAMTOKEN];
-            strcpy(t, s);
+            strcpy(t, szPalabraLeida);
             t[pos] = alphabet[a];
 
-            strcpy(out[nOut++], t);
-            if (nOut >= NUMPALABRAS) return;
+            strcpy(szPalabrasSugeridas[iNumSugeridas++], t);
         }
 
+    // ---------------------------------------
     // INSERTIONS
-    for (int a = 0; a < A; a++)
-        for (int pos = 0; pos <= L; pos++)
+    // ---------------------------------------
+    for (int pos = 0; pos <= L; pos++)
+        for (int a = 0; a < A; a++)
         {
             char t[TAMTOKEN] = {0};
             int k = 0;
 
             // left part
             for (int i = 0; i < pos; i++)
-                t[k++] = s[i];
+                t[k++] = szPalabraLeida[i];
 
             // insert
             t[k++] = alphabet[a];
 
             // right part
             for (int i = pos; i < L; i++)
-                t[k++] = s[i];
+                t[k++] = szPalabraLeida[i];
 
-            strcpy(out[nOut++], t);
-            if (nOut >= NUMPALABRAS) return;
+            strcpy(szPalabrasSugeridas[iNumSugeridas++], t);
         }
 
-    // ONLY ONE SORT - custom
-    qsort(out, nOut, sizeof out[0], cmpstr_custom);
+    // ---------------------------------------
+    // SORT ONLY ONCE (custom alphabetical order)
+    // ---------------------------------------
+    qsort(szPalabrasSugeridas, iNumSugeridas, TAMTOKEN, cmpstr_custom);
+
+    // ---------------------------------------
+    // OPTIONAL: VERIFY CORRECT ORDER
+    // ---------------------------------------
+    /*
+    for (int i = 0; i + 1 < iNumSugeridas; i++)
+    {
+        if (cmpstr_custom(szPalabrasSugeridas[i], szPalabrasSugeridas[i + 1]) > 0)
+        {
+            printf("OUT OF ORDER: '%s' | '%s'\n",
+                   szPalabrasSugeridas[i], szPalabrasSugeridas[i + 1]);
+
+            printf("BYTES A: "); debug_print_bytes((unsigned char*)szPalabrasSugeridas[i]);
+            printf("BYTES B: "); debug_print_bytes((unsigned char*)szPalabrasSugeridas[i+1]);
+        }
+    }
+    */
 }
+
+
 
 
 
